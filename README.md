@@ -1,73 +1,85 @@
 # Hercle REST API Collection
-This Postman collection provides detailed implementation of the Hercle REST API, including:
-- OTC price quotes and order execution
-- Deposits and withdrawals (crypto and fiat)
-- Request-for-Quote (RFQ) flow
-- Whitelisting addresses
+
+This Postman collection provides a comprehensive implementation of the Hercle REST API, covering:
+
+- OTC price quoting and order execution  
+- Deposits and withdrawals (crypto and fiat)  
+- Request-for-Quote (RFQ) flows  
+- Address whitelisting  
 - Balance, trade, and transaction history
 
-It’s designed to simplify both manual testing and automated flows, using Postman environments, dynamic test scripts, and response validation logic.
+It is designed to support both manual testing and automated workflows, using Postman environments, built-in test scripts, and response validation logic.
 
 ---
-### How to Import and Configure the Collection
-1. Import the Collection
- 1.1. Open Postman.
- 1.2. Click Import → File → Select the .postman_collection.json.
- 2. Import the Environment
- 2.1. Click Import → Select the .postman_environment.json (e.g., Hercle Sandbox or Hercle Prod).
- 2.2. Select the environment from the top-right dropdown.
 
-The imported environment includes:
+## How to Import and Configure the Collection
 
-| Variable | Description                                                   |
-| -------- | ------------------------------------------------------------- |
-| `host`   | API base URL (e.g., `https://publicapi.dev.hercle.financial`) |
-| `token`  | Bearer token used for authorization (to be set manually)      |
+### 1. Import the Collection
+1. Open Postman.
+2. Click **Import** → **File**, and select the `.postman_collection.json` file.
+
+### 2. Import the Environment
+1. Click **Import** again, and select the `.postman_environment.json` file (e.g., Hercle Sandbox or Hercle Prod).
+2. Set the imported environment as active using the top-right environment selector.
+
+#### Environment Variables
+
+| Variable | Description                                                       |
+|----------|-------------------------------------------------------------------|
+| `host`   | Base URL for the API (e.g., `https://publicapi.dev.hercle.financial`) |
+| `token`  | Bearer token used for authentication (to be set manually)         |
 
 ---
-### How to Set Up the Token
-Authentication is handled through Bearer Token, set via Postman’s Authorization helper.
-1. Open Environments.
-2. Select your active environment.
-3. Paste your JWT token into the token variable
+
+## How to Set Up the Token
+
+Authentication uses a Bearer token, applied via Postman’s Authorization helper:
+
+1. Open **Environments** in Postman.
+2. Select the active environment.
+3. Set the `token` variable to your JWT token:
+   ```
+   token | eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+   ```
 4. Save the environment.
 
-All requests in the collection will now use this token automatically via Authorization: Bearer {{token}}.
+All requests in the collection automatically apply this token using:
+```
+Authorization: Bearer {{token}}
+```
 
 ---
-### Response Validation and Dynamic Variable Chaining
-For ease of use and testing, the collection includes:
 
-##### High-Level Response Schema Tests
-Every endpoint has built-in Postman test scripts to validate:
-- Expected keys/fields in the response
- - Array/object structures
+## Response Validation and Dynamic Variable Chaining
 
-This ensures each response matches the correct schema.
+This collection includes built-in features to streamline testing and request chaining.
 
-##### Dynamic Post-Test Variables
-Certain endpoints extract values from responses and save them as variables for use in subsequent requests:
+### Response Schema Validation
+Each request includes test scripts to validate the presence and structure of key fields. These help ensure API responses conform to expected formats, including object and array structures.
 
-| Variable    | Set From                             | Used In                      |
-| ----------- | ------------------------------------ | ---------------------------- |
-| `pair`      | First item in `/pairs` response      | Quoting, RFQs, Orders        |
-| `priceId`   | From `/price/{pair}/{size}`          | `/orders`                    |
-| `rfqId`     | From `/rfq`                          | `/rfq/accept`                |
-| `addressId` | From `/addresses/whitelist` response | For deletion and withdrawals |
+### Dynamic Variable Assignment
+Several requests store response values into environment variables, allowing chained execution without manual input. For example:
 
+| Variable    | Source Endpoint                   | Used In                         |
+|-------------|------------------------------------|----------------------------------|
+| `pair`      | First item from `/pairs`           | Quoting, RFQ, Order placement    |
+| `priceId`   | `/price/{pair}/{size}`             | `/orders`                        |
+| `rfqId`     | `/rfq`                             | `/rfq/accept`                    |
+| `addressId` | `/addresses/whitelist`             | Address deletion, withdrawals    |
 
-This enables step-by-step testing (e.g., get price → place order → verify) without manually copying IDs.
+This enables automated flows like: fetch pairs → get price → place order → submit withdrawal, with no need for manual copy-pasting.
 
 ---
-### Accessing Full Documentation
-You can explore the API in two ways:
 
-##### In Postman
+## Accessing Full Documentation
+
+### In Postman
 1. Click the collection name in the sidebar.
-2. Then click "View complete documentation" on the right-hand pane.
-3. This provides details for each endpoint: descriptions, sample requests/responses, test info, etc.
+2. Click **View complete documentation** in the right-hand pane.
+- This includes endpoint descriptions, sample requests/responses, and test behavior.
 
-##### Online
-Access the official REST API reference:
-🔗 https://documentation.hercle.financial/rest.html
+### Online
+You can also access the full API reference here:  
+**[https://documentation.hercle.financial/rest.html](https://documentation.hercle.financial/rest.html)**
+
 
