@@ -26,7 +26,7 @@ It is designed to support both manual testing and automated workflows, using Pos
 
 | Variable | Description                                                       |
 |----------|-------------------------------------------------------------------|
-| `host`   | Base URL for the API (e.g., `https://publicapi.dev.hercle.financial`) |
+| `host`   | Base URL for the API (e.g., `https://publicapi.hercle.financial`) |
 | `token`  | Bearer token used for authentication (to be set manually)         |
 
 ---
