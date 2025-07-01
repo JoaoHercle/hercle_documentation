@@ -1,0 +1,2967 @@
+{
+	"info": {
+		"_postman_id": "dfb0dcc7-333e-4e1e-86c5-17dc1e5b668f",
+		"name": "Hercle REST API",
+		"description": "## **Introduction to the Hercle REST API Collection**\n\nThis Postman collection provides full access to the **Hercle REST API**, enabling you to interact with endpoints for:\n\n- Pair discovery and pricing\n    \n- OTC order execution and RFQs\n    \n- Whitelisting and withdrawals (crypto + fiat)\n    \n- Balance, transaction, and trade history queries\n    \n\nIt is designed for both **sandbox** and **production** usage, with environment variables making it easy to switch contexts.\n\n---\n\n### **Importing the Environments**\n\n- Click **Import** → select the `.postman_environment.json` file (e.g., `Hercle Sandbox` or `Hercle Prod`).\n    \n- Once imported, select it from the environment dropdown at the top-right of Postman.\n    \n\n### After importing the environment:\n\nThe following variables are automatically available:\n\n| Variable | Description |\n| --- | --- |\n| `host` | Base API URL (e.g., `https://publicapi.sandbox.hercle.financial`) |\n| `token` | Your Bearer token (initially empty) |\n\n---\n\n## **Setting the Authentication Token**\n\nThe collection uses **Bearer Token Auth** via Postman’s built-in **Auth helper**.\n\n### To activate it:\n\n1. Go to the **Environments** tab.\n    \n2. Select the imported environment (e.g., `Hercle Sandbox`).\n    \n3. Set the `token` variable to your **Bearer Token**:\n    \n\n| Key | Value |\n| --- | --- |\n| `token` | `eyJhbGciOiJIUzI1NiIsInR5cCI6...` |\n\n1. Save the environment.\n    \n\nAll requests in the collection will now automatically include the token in the `Authorization` header.\n\n---\n\n## **Response Validation and Dynamic Variable Chaining**\n\nFor ease of use and testing, the collection includes:\n\n### High-Level Response Schema Tests\n\n- Every endpoint has built-in **Postman test scripts** to validate:\n    \n    - Expected keys/fields in the response\n        \n    - Array/object structures\n        \n\nThis ensures each response matches the expected schema.\n\n### Dynamic Post-Test Variables\n\n- Certain endpoints **extract values from responses** and **save them as variables** for use in subsequent requests:\n    \n\n| Variable | Set From | Used In |\n| --- | --- | --- |\n| `pair` | First item in `/pairs` response | Quoting, RFQs, Orders |\n| `priceId` | From `/price/{pair}/{size}` | `/orders` |\n| `rfqId` | From `/rfq` | `/rfq/accept` |\n| `addressId` | From `/addresses/whitelist` response | For deletion and withdrawals |\n\nThis enables **step-by-step testing** (e.g., get price → place order → verify) without manually copying IDs.\n\n---\n\n## **Accessing Full Documentation**\n\nYou have two options to view the complete API documentation:\n\n### In Postman\n\n- Click the **\"View complete documentation\"** link right under.\n    \n- You'll see structured docs with descriptions, parameters, and code samples.\n    \n\n### Online\n\nAccess the full live API documentation here:  \n  \n🔗 [<b>https://documentation.hercle.financial/rest.html</b>](https://documentation.hercle.financial/rest.html)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "46160379",
+		"_collection_link": "https://galactic-robot-7464769.postman.co/workspace/16c5b3ce-769b-465c-8382-1835fe9d9ae2/collection/46160379-dfb0dcc7-333e-4e1e-86c5-17dc1e5b668f?action=share&source=collection_link&creator=46160379"
+	},
+	"item": [
+		{
+			"name": "Get Available Pairs",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"\r",
+							"if (response.length > 0) {\r",
+							"    const requiredKeys = [\r",
+							"        \"name\",\r",
+							"        \"asset\",\r",
+							"        \"currency\",\r",
+							"        \"minSize\",\r",
+							"        \"maxSize\",\r",
+							"        \"minQuoteSize\",\r",
+							"        \"maxQuoteSize\"\r",
+							"    ];\r",
+							"\r",
+							"    const first = response[0];\r",
+							"    pm.collectionVariables.set(\"pair\", first.name);\r",
+							"    pm.collectionVariables.set(\"asset\", first.asset);\r",
+							"    pm.collectionVariables.set(\"amount\", first.minQuoteSize);\r",
+							"    pm.collectionVariables.set(\"size\", first.minSize);\r",
+							"\r",
+							"\r",
+							"    response.forEach((item, index) => {\r",
+							"        pm.test(`Item ${index + 1} has all required keys`, function () {\r",
+							"            requiredKeys.forEach(key => {\r",
+							"                pm.expect(item).to.have.property(key);\r",
+							"            });\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{host}}/api/v1/pairs",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"pairs"
+					]
+				},
+				"description": "## **Get Available Pairs**\n\nThis endpoint retrieves all currently supported trading pairs and their trading constraints.\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint**: `{{host}}/api/v1/pairs`\n    \n\n### Request Body\n\n_None required._\n\n### Example Response\n\n``` json\n[\n  {\n    \"name\": \"BTCUSDT\",\n    \"asset\": \"BTC\",\n    \"currency\": \"USDT\",\n    \"minSize\": 0.0001,\n    \"maxSize\": 10,\n    \"minQuoteSize\": 10,\n    \"maxQuoteSize\": 100000\n  }\n]\n\n ```\n\n### Notes\n\n- You can use this information to determine valid pairs before price or order requests.\n    \n- Field `minSize` and `maxSize` apply to the base asset; `minQuoteSize`/`maxQuoteSize` apply to the quote."
+			},
+			"response": [
+				{
+					"name": "Get Available Pairs",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "https://publicapi.hercle.financial/api/v1/pairs",
+							"protocol": "https",
+							"host": [
+								"publicapi",
+								"hercle",
+								"financial"
+							],
+							"path": [
+								"api",
+								"v1",
+								"pairs"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\r\n    {\r\n        \"name\": \"BTCUSDT\",\r\n        \"asset\": \"BTC\",\r\n        \"currency\": \"USDT\",\r\n        \"minSize\": 0.0001,\r\n        \"maxSize\": 20.0,\r\n        \"minQuoteSize\": 15.0,\r\n        \"maxQuoteSize\": 1200000.0\r\n    }\r\n]"
+				}
+			]
+		},
+		{
+			"name": "Get Pair Size by Amount",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an object\", function () {\r",
+							"    pm.expect(response).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const requiredKeys = [\"size\", \"id\", \"pair\", \"price\", \"timeStamp\"];\r",
+							"pm.test(\"Response has all required keys\", function () {\r",
+							"    requiredKeys.forEach(key => {\r",
+							"        pm.expect(response, `Missing key: ${key}`).to.have.property(key);\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"pm.collectionVariables.set(\"priceId\", response.id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{host}}/api/v1/pairs/{{pair}}/{{side}}/{{amount}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"pairs",
+						"{{pair}}",
+						"{{side}}",
+						"{{amount}}"
+					],
+					"query": [
+						{
+							"key": "",
+							"value": null,
+							"disabled": true
+						}
+					]
+				},
+				"description": "## **Get Pair Size by Amount**\n\nThis endpoint returns the size of the base asset for a given amount and trade side (buy/sell).\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint**:  \n    `{{host}}/api/v1/pairs/{pair}/{side}/{amount}`\n    \n\n| Parameter | Type | Description |\n| --- | --- | --- |\n| pair | string | Trading pair (e.g., `BTCUSDT`) |\n| side | string | `\"buy\"` or `\"sell\"` |\n| amount | number | Amount in quote currency |\n\n### Example Request\n\n`GET /api/v1/pairs/BTCUSDT/buy/500`\n\n### Example Response\n\n``` json\n{\n    \"id\": \"f47ac10b-58cc-4372-a567-0e02b2c3d479\",\n    \"pair\": \"BTCUSDT\",\n    \"price\": 26844.07,\n    \"size\": 0.01,\n    \"timestamp\": \"2023-10-11T23:00:57.93094Z\"\n}\n\n ```\n\n### Notes\n\n- Used for estimating how much base currency will be received/spent."
+			},
+			"response": [
+				{
+					"name": "Get Pair Size by Amount",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "https://publicapi.hercle.financial/api/v1/pairs/BTCUSDT/buy/",
+							"protocol": "https",
+							"host": [
+								"publicapi",
+								"hercle",
+								"financial"
+							],
+							"path": [
+								"api",
+								"v1",
+								"pairs",
+								"BTCUSDT",
+								"buy",
+								""
+							],
+							"query": [
+								{
+									"key": "",
+									"value": null,
+									"disabled": true
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "{\n    \"id\": \"f47ac10b-58cc-4372-a567-0e02b2c3d479\",\n    \"pair\": \"BTCUSDT\",\n    \"price\": 26844.07,\n    \"size\": 0.01,\n    \"timestamp\": \"2023-10-11T23:00:57.93094Z\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Get Asset Networks",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"\r",
+							"if (response.length > 0) {\r",
+							"    response.forEach((item, index) => {\r",
+							"        pm.test(`Item ${index + 1} is a string`, function () {\r",
+							"            pm.expect(item).to.be.a(\"string\");\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{host}}/api/v1/pairs/networks/{{asset}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"pairs",
+						"networks",
+						"{{asset}}"
+					]
+				},
+				"description": "## **Get Asset Networks**\n\nThis endpoint lists all supported blockchain networks for a given asset (e.g., ETH, USDT).\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint**:  \n    `{{host}}/api/v1/pairs/networks/{asset}`\n    \n\n| Parameter | Type | Description |\n| --- | --- | --- |\n| asset | string | Asset symbol (e.g., `\"ETH\"`) |\n\n### Example Request\n\n`GET /api/v1/pairs/networks/ETH`\n\n### Example Response\n\n``` json\n[\n  \"Ethereum\",\n  \"Polygon\",\n  \"Arbitrum One\",\n  \"Optimism\"\n]\n\n ```\n\n### Notes\n\n- Use this to determine which network a withdrawal or deposit must be routed through for selected asset.\n    \n- Responses are lowercase/uppercase sensitive and must match expected `network` values in other endpoints."
+			},
+			"response": [
+				{
+					"name": "Get Asset Networks",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://publicapi.hercle.financial/api/v1/pairs/networks/",
+							"protocol": "https",
+							"host": [
+								"publicapi",
+								"hercle",
+								"financial"
+							],
+							"path": [
+								"api",
+								"v1",
+								"pairs",
+								"networks",
+								""
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    \"Ethereum\",\n    \"Tron\",\n    \"BNB Smart Chain\",\n    \"Polygon\",\n    \"Optimism\",\n    \"Arbitrum One\"\n]"
+				}
+			]
+		},
+		{
+			"name": "Whitelist Address",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an object\", function () {\r",
+							"    pm.expect(response).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const requiredKeys = [\"httpStatusCode\", \"addressId\", \"message\"];\r",
+							"\r",
+							"pm.test(\"Response has all required keys\", function () {\r",
+							"    requiredKeys.forEach(key => {\r",
+							"        pm.expect(response, `Missing key: ${key}`).to.have.property(key);\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"pm.collectionVariables.set(\"addressId\", response.addressId);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"name\": \"TESTETHADDRESS\",\r\n    \"asset\": \"ETH\",\r\n    \"address\": \"0x000000000000000000000000000000000000dEaD\",\r\n    \"network\": \"Ethereum\"\r\n}"
+				},
+				"url": {
+					"raw": "{{host}}/api/v1/addresses/whitelist",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"addresses",
+						"whitelist"
+					]
+				},
+				"description": "# Whitelist Address\n\nThis endpoint allows users to add a new address to the whitelist for a specified asset on a particular network.\n\n### Request\n\n- **Method**: `POST`\n    \n- **Endpoint**: `{{host}}/api/v1/addresses/whitelist`\n    \n\n#### Body Parameters (JSON)\n\n| Field | Type | Description |\n| --- | --- | --- |\n| name | string | A descriptive name for the address being added to the whitelist. |\n| asset | string | The type of asset associated with the address (e.g., `\"ETH\"`). |\n| address | string | The cryptocurrency address to whitelist. Must match the asset format. |\n| network | string | The blockchain network (e.g., `\"Ethereum\"`). |\n\n### Example Request Body\n\n``` json\n{\n  \"name\": \"TESTETHADDRESS\",\n  \"asset\": \"ETH\",\n  \"address\": \"0x000000000000000000000000000000000000dEaD\",\n  \"network\": \"Ethereum\"\n}\n\n ```\n\n### Example Response\n\n``` json\n{\n  \"httpStatusCode\": 201,\n  \"addressId\": \"abc123\",\n  \"message\": \"\"\n}\n\n ```\n\n### Notes\n\n- Ensure the address format is valid for the specified network.\n    \n- This is required before executing withdrawals or other transactions to the address."
+			},
+			"response": [
+				{
+					"name": "Whitelist Address",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"name\": \"TESTETHADDRESS\",\r\n    \"asset\": \"ETH\",\r\n    \"address\": \"0x000000000000000000000000000000000000dEaD\",\r\n    \"network\": \"Ethereum\"\r\n}"
+						},
+						"url": {
+							"raw": "https://publicapi.hercle.financial/api/v1/addresses/whitelist",
+							"protocol": "https",
+							"host": [
+								"publicapi",
+								"hercle",
+								"financial"
+							],
+							"path": [
+								"api",
+								"v1",
+								"addresses",
+								"whitelist"
+							]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "{\n    \"httpStatusCode\": 201,\n    \"addressId\": \"5e6f3c8d-9a56-4a1b-a3a3-0c1a7d3a5f4b\",\n    \"message\": \"\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Get Whitelisted Addresses",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"if (response.length > 0) {\r",
+							"    const requiredKeys = [\r",
+							"        \"id\",\r",
+							"        \"name\",\r",
+							"        \"userId\",\r",
+							"        \"asset\",\r",
+							"        \"address\",\r",
+							"        \"addressParams\",\r",
+							"        \"network\",\r",
+							"        \"status\",\r",
+							"        \"comment\",\r",
+							"        \"auditBy\",\r",
+							"        \"auditDate\",\r",
+							"        \"enabled\",\r",
+							"        \"deleted\",\r",
+							"        \"creationDate\"\r",
+							"    ];\r",
+							"\r",
+							"    response.forEach((item, index) => {\r",
+							"        pm.test(`Item ${index + 1} has all required keys`, function () {\r",
+							"            requiredKeys.forEach(key => {\r",
+							"                pm.expect(item).to.have.property(key);\r",
+							"            });\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{host}}/api/v1/addresses/whitelisted",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"addresses",
+						"whitelisted"
+					]
+				},
+				"description": "## **Get Whitelisted Addresses**\n\nThis endpoint returns all addresses the user has added to the whitelist (both crypto and fiat).\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint**: `{{host}}/api/v1/addresses/whitelisted`\n    \n\n### Request Body\n\n_None required._\n\n### Example Response\n\n``` json\n[\n  {\n    \"id\": \"abcd-1234\",\n    \"name\": \"Main Wallet\",\n    \"userId\": \"user-9876\",\n    \"asset\": \"ETH\",\n    \"address\": \"0x000000000000000000000000000000000000dEaD\",\n    \"addressParams\": {},\n    \"network\": \"Ethereum\",\n    \"status\": 1,\n    \"comment\": \"\",\n    \"auditBy\": \"\",\n    \"auditDate\": \"\",\n    \"enabled\": true,\n    \"deleted\": false,\n    \"creationDate\": \"2024-05-01T10:00:00Z\"\n  }\n]\n\n ```"
+			},
+			"response": [
+				{
+					"name": "Get Whitelisted Addresses",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "https://publicapi.hercle.financial/api/v1/addresses/whitelisted",
+							"protocol": "https",
+							"host": [
+								"publicapi",
+								"hercle",
+								"financial"
+							],
+							"path": [
+								"api",
+								"v1",
+								"addresses",
+								"whitelisted"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"id\": \"f47ac10b-58cc-4372-a567-0e02b2c3d479\",\n        \"name\": \"ETH Adress 01\",\n        \"userId\": \"d3c8f872-d8f2-4c1b-9b83-6d2b8e13f1a2\",\n        \"asset\": \"ETH\",\n        \"address\": \"0x1234567890abcdef1234567890abcdef12345678\",\n        \"addressParams\": {},\n        \"network\": \"Ethereum\",\n        \"status\": 0,\n        \"comment\": \"\",\n        \"auditBy\": \"\",\n        \"auditDate\": \"\",\n        \"enabled\": true,\n        \"deleted\": false,\n        \"creationDate\": \"2023-10-05T14:07:59+00:00\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Remove Whitelisted Addresses",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"// 1. Ensure response is an object\r",
+							"pm.test(\"Response is an object\", function () {\r",
+							"    pm.expect(response).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"// 2. Validate required keys exist\r",
+							"const requiredKeys = [\"httpStatusCode\", \"addressId\", \"message\"];\r",
+							"\r",
+							"pm.test(\"Response has all required keys\", function () {\r",
+							"    requiredKeys.forEach(key => {\r",
+							"        pm.expect(response, `Missing key: ${key}`).to.have.property(key);\r",
+							"    });\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"addressId\": \"{{addressId}}\"\r\n}"
+				},
+				"url": {
+					"raw": "{{host}}/api/v1/addresses/whitelist",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"addresses",
+						"whitelist"
+					]
+				},
+				"description": "## **Remove Whitelisted Address**\n\nThis endpoint removes an existing address from the whitelist by ID.\n\n### Request\n\n- **Method**: `DELETE`\n    \n- **Endpoint**: `{{host}}/api/v1/addresses/whitelist`\n    \n\n#### Body Parameters (JSON)\n\n| Field | Type | Description |\n| --- | --- | --- |\n| addressId | string | Unique identifier of the whitelisted address to remove |\n\n### Example Request Body\n\n``` json\n{\n  \"addressId\": \"abc123\"\n}\n\n ```\n\n### Example Response\n\n``` json\n{\n  \"httpStatusCode\": 200,\n  \"addressId\": \"abc123\",\n  \"message\": \"\"\n}\n\n ```\n\n### Notes\n\n- The address must exist and belong to the authenticated user."
+			},
+			"response": [
+				{
+					"name": "Remove Whitelisted Addresses",
+					"originalRequest": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"addressId\": \"\"\r\n}"
+						},
+						"url": {
+							"raw": "https://publicapi.hercle.financial/api/v1/addresses/whitelist",
+							"protocol": "https",
+							"host": [
+								"publicapi",
+								"hercle",
+								"financial"
+							],
+							"path": [
+								"api",
+								"v1",
+								"addresses",
+								"whitelist"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "{\n    \"httpStatusCode\": 200,\n    \"addressId\": \"4533cb90-0854-4f7c-a50c-e51c9469dba6\",\n    \"message\": \"\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Get Deposit Addresses",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"if (response.length > 0) {\r",
+							"    const requiredKeys = [\r",
+							"        \"id\",\r",
+							"        \"name\",\r",
+							"        \"userId\",\r",
+							"        \"asset\",\r",
+							"        \"address\",\r",
+							"        \"addressParams\",\r",
+							"        \"network\",\r",
+							"        \"deleted\",\r",
+							"        \"creationDate\"\r",
+							"    ];\r",
+							"\r",
+							"    response.forEach((item, index) => {\r",
+							"        pm.test(`Item ${index + 1} has all required keys`, function () {\r",
+							"            requiredKeys.forEach(key => {\r",
+							"                pm.expect(item).to.have.property(key);\r",
+							"            });\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{host}}/api/v1/addresses/deposit",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"addresses",
+						"deposit"
+					]
+				},
+				"description": "## **Get Deposit Addresses**\n\nThis endpoint returns all deposit addresses whitelisted.\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint**: `{{host}}/api/v1/addresses/deposit`\n    \n\n### Request Body\n\n_None required._\n\n### Example Response\n\n``` json\n[\n  {\n    \"id\": \"dep1\",\n    \"name\": \"BTC Wallet\",\n    \"userId\": \"user1\",\n    \"asset\": \"BTC\",\n    \"address\": \"1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa\",\n    \"addressParams\": {},\n    \"network\": \"Bitcoin\",\n    \"deleted\": false,\n    \"creationDate\": \"2024-06-01T14:25:00Z\"\n  }\n]\n\n ```"
+			},
+			"response": [
+				{
+					"name": "Get Deposit Addresses",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "https://publicapi.hercle.financial/api/v1/addresses/deposit",
+							"protocol": "https",
+							"host": [
+								"publicapi",
+								"hercle",
+								"financial"
+							],
+							"path": [
+								"api",
+								"v1",
+								"addresses",
+								"deposit"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"id\": \"d6b9c8a2-b8ec-4b31-8c93-5b17dcb5a9e5\",\n        \"name\": \"EUR\",\n        \"userId\": \"f2c5d3b2-1e45-4e76-9f8a-0f1b6b2c8e0e\",\n        \"asset\": \"EUR\",\n        \"address\": \"DE00000000000000000000\",\n        \"addressParams\": {},\n        \"network\": \"Sepa\",\n        \"deleted\": false,\n        \"creationDate\": \"0001-01-01T00:00:00\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Create deposit",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"asset\": \"BTC\",\r\n    \"network\": \"Bitcoin\"\r\n}"
+				},
+				"url": {
+					"raw": "{{host}}/api/v1/addresses/deposit",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"addresses",
+						"deposit"
+					]
+				},
+				"description": "## **Create Deposit**\n\nCreates a fake deposit for the given asset.  \nAvailabe only for FIAT currencies (EUR, USD, GBP).\n\n⚠️ WARNING - This method is only available in the staging environment.\n\n### Request\n\n- **Method**: `POST`\n    \n- **Endpoint**: `{{host}}/api/v1/addresses/deposit`\n    \n\n#### Body Parameters (JSON)\n\n| Field | Type | Description |\n| --- | --- | --- |\n| asset | string | Asset to deposit (e.g., `\"BTC\"`) |\n| network | string | Network to use (e.g., `\"Bitcoin\"`) |\n\n### Example Request Body\n\n``` json\n{\n  \"asset\": \"BTC\",\n  \"network\": \"Bitcoin\"\n}\n\n ```\n\n### Example Response\n\nThis method doesn't have a response.\n\n### Notes\n\n- Only available in staging for fiat."
+			},
+			"response": [
+				{
+					"name": "Create deposit",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"asset\": \"BTC\",\r\n    \"network\": \"Bitcoin\"\r\n}"
+						},
+						"url": {
+							"raw": "https://publicapi.hercle.financial/api/v1/addresses/deposit",
+							"protocol": "https",
+							"host": [
+								"publicapi",
+								"hercle",
+								"financial"
+							],
+							"path": [
+								"api",
+								"v1",
+								"addresses",
+								"deposit"
+							]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": ""
+				}
+			]
+		},
+		{
+			"name": "Get Pair Price",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an object\", function () {\r",
+							"    pm.expect(response).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const requiredKeys = [\"size\", \"id\", \"pair\", \"buyPrice\", \"sellPrice\", \"markPrice\", \"timestamp\"];\r",
+							"pm.test(\"Response has all required keys\", function () {\r",
+							"    requiredKeys.forEach(key => {\r",
+							"        pm.expect(response, `Missing key: ${key}`).to.have.property(key);\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"pm.collectionVariables.set(\"priceId\", response.id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{host}}/api/v1/price/{{pair}}/{{size}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"price",
+						"{{pair}}",
+						"{{size}}"
+					]
+				},
+				"description": "## **Get Pair Price**\n\nReturns a price quote (buy/sell) for a given trading pair and size.\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint**: `{{host}}/api/v1/price/{pair}/{size}`\n    \n\n| Parameter | Type | Description |\n| --- | --- | --- |\n| pair | string | Trading pair (e.g., `BTCUSDT`) |\n| size | number | Quantity of the base asset (e.g., `0.01`) |\n\n### Example Request\n\n`GET /api/v1/price/BTCUSDT/25`\n\n### Example Response\n\n``` json\n{\n  \"id\": \"abc123\",\n  \"pair\": \"BTCUSDT\",\n  \"buyPrice\": 26844.07,\n  \"sellPrice\": 26840.01,\n  \"markPrice\": 26842.00,\n  \"size\": 1.0,\n  \"timestamp\": \"2025-07-01T12:05:00.000Z\"\n}\n\n ```\n\n### Notes\n\n- The `id` in the response is needed to execute a trade using the **Place OTC Order** endpoint.\n    \n- Quotes are subject to expiration."
+			},
+			"response": [
+				{
+					"name": "Get Pair Price",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://publicapi.hercle.financial/api/v1/price/BTCUSDT/",
+							"protocol": "https",
+							"host": [
+								"publicapi",
+								"hercle",
+								"financial"
+							],
+							"path": [
+								"api",
+								"v1",
+								"price",
+								"BTCUSDT",
+								""
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "{\n  \"id\": \"e2c420d928d4bf8ce0ff2b178b165b44\",\n  \"buyPrice\": 26798.50,\n  \"sellPrice\": 26790.50,\n  \"size\": 1.0,\n  \"pair\": \"BTCUSDT\",\n  \"markPrice\": 26794.575,\n  \"timestamp\": \"2023-10-11T23:00:57.93094Z\"\n}\n"
+				}
+			]
+		},
+		{
+			"name": "Place OTC Order",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an object\", function () {\r",
+							"    pm.expect(response).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const requiredKeys = [\r",
+							"    \"tradeId\",\r",
+							"    \"side\",\r",
+							"    \"pair\",\r",
+							"    \"price\",\r",
+							"    \"size\",\r",
+							"    \"notional\",\r",
+							"    \"status\",\r",
+							"    \"baseCurrency\",\r",
+							"    \"quoteCurrency\",\r",
+							"    \"timestamp\",\r",
+							"    \"statusError\"\r",
+							"];\r",
+							"\r",
+							"pm.test(\"Response has all required keys\", function () {\r",
+							"    requiredKeys.forEach(key => {\r",
+							"        pm.expect(response, `Missing key: ${key}`).to.have.property(key);\r",
+							"    });\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"priceId\": \"{{priceId}}\",\r\n    \"side\": \"buy\",\r\n    \"slippage\": 0.01\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{host}}/api/v1/orders",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"orders"
+					]
+				},
+				"description": "## **Place OTC Order**\n\nPlaces an OTC order using a previously quoted price.\n\n### Request\n\n- **Method**: `POST`\n    \n- **Endpoint**: `{{host}}/api/v1/orders`\n    \n\n#### Body Parameters (JSON)\n\n| Field | Type | Description |\n| --- | --- | --- |\n| priceId | string | ID from the price quote previously fetched |\n| side | string | `\"buy\"` or `\"sell\"` |\n| slippage | float | Maximum allowed slippage (percentage, e.g., `0.01` = 1%) |\n\n### Example Request Body\n\n``` json\n{\n  \"priceId\": \"abc123\",\n  \"side\": \"buy\",\n  \"slippage\": 0.01\n}\n\n ```\n\n### Example Response\n\n``` json\n{\n  \"tradeId\": \"trade789\",\n  \"side\": \"buy\",\n  \"pair\": \"BTCUSDT\",\n  \"price\": 26844.07,\n  \"size\": 1.0,\n  \"notional\": 26844.07,\n  \"status\": 1,\n  \"baseCurrency\": \"BTC\",\n  \"quoteCurrency\": \"USDT\",\n  \"timestamp\": \"2025-07-01T12:06:00.000Z\",\n  \"statusError\": \"\"\n}\n\n ```\n\n### Notes\n\n- A successful trade returns a `tradeId` and full execution details."
+			},
+			"response": [
+				{
+					"name": "Place OTC Order",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"priceId\": \"\",\r\n    \"side\": \"buy\",\r\n    \"slippage\": 0.01\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://publicapi.hercle.financial/api/v1/orders",
+							"protocol": "https",
+							"host": [
+								"publicapi",
+								"hercle",
+								"financial"
+							],
+							"path": [
+								"api",
+								"v1",
+								"orders"
+							]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "{\n    \"tradeId\": \"d9b2f1c9-bc34-4a16-a5f1-3c4de8e77a41\",\n    \"side\": \"buy\",\n    \"pair\": \"BTCUSDT\",\n    \"price\": 26844.07,\n    \"size\": 0.01,\n    \"notional\": 268.4407,\n    \"status\": 1,\n    \"baseCurrency\": \"BTC\",\n    \"quoteCurrency\": \"USDT\",\n    \"timestamp\": \"2023-10-11T23:00:57.93094Z\",\n    \"statusError\": \"\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Create RFQ",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an object\", function () {\r",
+							"    pm.expect(response).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const requiredKeys = [\r",
+							"    \"requestForQuoteId\",\r",
+							"    \"userId\",\r",
+							"    \"instrument\",\r",
+							"    \"baseCurrency\",\r",
+							"    \"quoteCurrency\",\r",
+							"    \"price\",\r",
+							"    \"size\",\r",
+							"    \"side\",\r",
+							"    \"amount\",\r",
+							"    \"status\",\r",
+							"    \"expireDateTime\",\r",
+							"    \"requestDateTime\"\r",
+							"];\r",
+							"\r",
+							"pm.test(\"All required keys are present\", function () {\r",
+							"    requiredKeys.forEach(key => {\r",
+							"        pm.expect(response, `Missing key: ${key}`).to.have.property(key);\r",
+							"    });\r",
+							"});\r",
+							"\r",
+							"pm.collectionVariables.set(\"rfqId\", response.requestForQuoteId);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"pair\": \"{{pair}}\",\r\n    \"side\": \"{{side}}\",\r\n    \"size\": {{size}},\r\n    \"amount\": 0\r\n}"
+				},
+				"url": {
+					"raw": "{{host}}/api/v1/rfq",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"rfq"
+					]
+				},
+				"description": "## **Create RFQ (Request for Quote)**\n\nCreates a request for quote that can later be accepted or rejected.\n\n### Request\n\n- **Method**: `POST`\n    \n- **Endpoint**: `{{host}}/api/v1/rfq`\n    \n\n#### Body Parameters (JSON)\n\n| Field | Type | Description |\n| --- | --- | --- |\n| pair | string | Trading pair, e.g., `\"BTCUSDT\"` |\n| side | string | `\"buy\"` or `\"sell\"` |\n| size | number | Quantity of the base asset (e.g., `1.0`) |\n| amount | number | Quote value (usually `0` if quoting by size) |\n\n### Example Request Body\n\n``` json\n{\n  \"pair\": \"BTCUSDT\",\n  \"side\": \"buy\",\n  \"size\": 1.0,\n  \"amount\": 0\n}\n\n ```\n\n### Example Response\n\n``` json\n{\n  \"requestForQuoteId\": \"rfq001\",\n  \"userId\": \"user1\",\n  \"instrument\": \"BTCUSDT\",\n  \"baseCurrency\": \"BTC\",\n  \"quoteCurrency\": \"USDT\",\n  \"side\": \"buy\",\n  \"price\": 26844.07,\n  \"size\": 1.0,\n  \"amount\": 26844.07,\n  \"status\": 1,\n  \"requestDateTime\": \"2025-07-01T12:07:00.000Z\",\n  \"expireDateTime\": \"2025-07-01T12:07:15.000Z\"\n}\n\n ```\n\n### Notes\n\n- The RFQ is valid for a short time (\\~ 15 seconds).\n    \n- Use the `requestForQuoteId` in the next endpoint to accept the trade."
+			},
+			"response": [
+				{
+					"name": "Create RFQ",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"pair\": \"BTCUSDT\",\r\n    \"side\": \"buy\",\r\n    \"size\": ,\r\n    \"amount\": 0\r\n}"
+						},
+						"url": {
+							"raw": "https://publicapi.hercle.financial/api/v1/rfq",
+							"protocol": "https",
+							"host": [
+								"publicapi",
+								"hercle",
+								"financial"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rfq"
+							]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "{\n    \"requestForQuoteId\": \"3f3b2b67-b14c-4b64-bc43-cb7b03c2aa98\",\n    \"userId\": \"2e1a8b6d-6f3c-4a82-9f40-f87e3c1e8c3c\",\n    \"instrument\": \"BTCUSDT\",\n    \"baseCurrency\": \"BTC\",\n    \"quoteCurrency\": \"USDT\",\n    \"side\": \"buy\",\n    \"size\": 0.01,\n    \"price\": 26844.07,\n    \"amount\": 1,\n    \"status\": 1,\n    \"requestDateTime\": \"2023-10-11T23:00:57.93094Z\",\n    \"expireDateTime\": \"2023-10-11T23:01:27.87528Z\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Accept RFQ",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an object\", function () {\r",
+							"    pm.expect(response).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const requiredKeys = [\r",
+							"    \"tradeId\",\r",
+							"    \"side\",\r",
+							"    \"pair\",\r",
+							"    \"price\",\r",
+							"    \"size\",\r",
+							"    \"notional\",\r",
+							"    \"status\",\r",
+							"    \"baseCurrency\",\r",
+							"    \"quoteCurrency\",\r",
+							"    \"timestamp\",\r",
+							"    \"statusError\"\r",
+							"];\r",
+							"\r",
+							"pm.test(\"All required keys are present\", function () {\r",
+							"    requiredKeys.forEach(key => {\r",
+							"        pm.expect(response, `Missing key: ${key}`).to.have.property(key);\r",
+							"    });\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"requestForQuoteId\": \"{{rfqId}}\"\r\n}"
+				},
+				"url": {
+					"raw": "{{host}}/api/v1/rfq/accept",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"rfq",
+						"accept"
+					]
+				},
+				"description": "## **Accept RFQ**\n\nAccepts an active RFQ and executes the trade at the quoted price.\n\n### Request\n\n- **Method**: `POST`\n    \n- **Endpoint**: `{{host}}/api/v1/rfq/accept`\n    \n\n#### Body Parameters (JSON)\n\n| Field | Type | Description |\n| --- | --- | --- |\n| requestForQuoteId | string | The unique ID of the RFQ to accept |\n\n### Example Request Body\n\n``` json\n{\n  \"requestForQuoteId\": \"rfq001\"\n}\n\n ```\n\n### Example Response\n\n``` json\n{\n  \"tradeId\": \"trade001\",\n  \"side\": \"buy\",\n  \"pair\": \"BTCUSDT\",\n  \"price\": 26844.07,\n  \"size\": 1.0,\n  \"notional\": 26844.07,\n  \"status\": 1,\n  \"baseCurrency\": \"BTC\",\n  \"quoteCurrency\": \"USDT\",\n  \"timestamp\": \"2025-07-01T12:08:00.000Z\",\n  \"statusError\": \"\"\n}\n\n ```\n\n### Notes\n\n- RFQ must be active and not expired when accepted.\n    \n- If the RFQ is stale, you’ll receive an error with an error message."
+			},
+			"response": [
+				{
+					"name": "Accept RFQ",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"requestForQuoteId\": \"\"\r\n}"
+						},
+						"url": {
+							"raw": "https://publicapi.hercle.financial/api/v1/rfq/accept",
+							"protocol": "https",
+							"host": [
+								"publicapi",
+								"hercle",
+								"financial"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rfq",
+								"accept"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "{\n    \"tradeId\": \"c56a4180-65aa-42ec-a945-5fd21dec0538\",\n    \"side\": \"buy\",\n    \"pair\": \"BTCUSDT\",\n    \"price\": 26844.07,\n    \"size\": 0.01,\n    \"notional\": 268.4407,\n    \"status\": 1,\n    \"baseCurrency\": \"BTC\",\n    \"quoteCurrency\": \"USDT\",\n    \"timestamp\": \"2023-10-11T23:00:57.93094Z\",\n    \"statusError\": \"\"\n}"
+				}
+			]
+		},
+		{
+			"name": "Get Orders By ClientID",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"if (response.length > 0) {\r",
+							"    const requiredKeys = [\r",
+							"        \"orderId\",\r",
+							"        \"clientId\",\r",
+							"        \"userId\",\r",
+							"        \"instrument\",\r",
+							"        \"side\",\r",
+							"        \"orderType\",\r",
+							"        \"price\",\r",
+							"        \"executedPrice\",\r",
+							"        \"executedTimestamp\",\r",
+							"        \"quantity\",\r",
+							"        \"quantityFilled\",\r",
+							"        \"orderStatus\",\r",
+							"        \"cancellationReason\",\r",
+							"        \"slippage\",\r",
+							"        \"timestamp\"\r",
+							"    ];\r",
+							"\r",
+							"    response.forEach((item, index) => {\r",
+							"        pm.test(`Item ${index + 1} has all required keys`, function () {\r",
+							"            requiredKeys.forEach(key => {\r",
+							"                pm.expect(item).to.have.property(key);\r",
+							"            });\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{host}}/api/v1/orders/{{webClientId}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"orders",
+						"{{webClientId}}"
+					]
+				},
+				"description": "## **Get Orders by Client ID**\n\nFetches all OTC orders placed by a specific client.\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint**:  \n    `{{host}}/api/v1/orders/{clientId}`\n    \n\n| Parameter | Type | Description |\n| --- | --- | --- |\n| clientId | string | The unique identifier of the client |\n\n### Example Request\n\n`GET /api/v1/orders/68925acb-4f03-48ab-98a9-16b845f21017`\n\n### Example Response\n\n``` json\n[\n  {\n    \"orderId\": \"123e4567-e89b-12d3-a456-426614174000\",\n    \"clientId\": \"68925acb-4f03-48ab-98a9-16b845f21017\",\n    \"userId\": \"as3e4567-e89b-12d3-a456-426614174000\",\n    \"instrument\": \"BTCUSDT\",\n    \"side\": \"buy\",\n    \"orderType\": 0,\n    \"price\": 26800,\n    \"executedPrice\": 26844.07,\n    \"executedTimestamp\": \"2025-07-01T12:10:00.000Z\",\n    \"quantity\": 1,\n    \"quantityFilled\": 1,\n    \"orderStatus\": 2,\n    \"cancellationReason\": \"\",\n    \"slippage\": 0.01,\n    \"timestamp\": \"2025-07-01T12:09:59.000Z\"\n  }\n]\n\n ```\n\n### Notes\n\n- Use this to filter orders for a specific integration or front-end app.\n    \n- Limited to recent orders (7-day window)."
+			},
+			"response": [
+				{
+					"name": "Get Orders By ClientID",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://publicapi.sandbox.hercle.financial/api/v1/orders/{{clienteId}}",
+							"protocol": "https",
+							"host": [
+								"publicapi",
+								"sandbox",
+								"hercle",
+								"financial"
+							],
+							"path": [
+								"api",
+								"v1",
+								"orders",
+								"{{clienteId}}"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"orderId\": \"d69f4c12-0a0a-4b5f-8a5f-6c3e0e7e2c4e\",\n        \"clientId\": \"b3e8f4a3-6c78-44b8-8b0b-789c90fd5b20\",\n        \"userId\": \"e6c3c12f-df2d-4a2f-bf4d-b7ca7a8f8a1a\",\n        \"instrument\": \"BNBEUR\",\n        \"side\": \"buy\",\n        \"orderType\": 0,\n        \"price\": 541.35,\n        \"executedPrice\": 541.35,\n        \"executedTimestamp\": \"2024-03-17T16:09:15.000Z\",\n        \"quantity\": 0.05,\n        \"quantityFilled\": 0.05,\n        \"orderStatus\": 2,\n        \"cancellationReason\": \"\",\n        \"slippage\": 0.1,\n        \"timestamp\": \"2024-03-17T16:09:14.000Z\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Get Orders Paginated",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const now = new Date();\r",
+							"const minus3Days = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);\r",
+							"\r",
+							"const isoStartDate = minus3Days.toISOString(); \r",
+							"const isoEndDate = now.toISOString(); \r",
+							"\r",
+							"const encodedStartDate = encodeURIComponent(isoStartDate);\r",
+							"const encodedEndDate = encodeURIComponent(isoEndDate);\r",
+							"\r",
+							"pm.variables.set(\"start_date\", encodedStartDate);\r",
+							"pm.variables.set(\"end_date\", encodedEndDate);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"if (response.length > 0) {\r",
+							"    const requiredKeys = [\r",
+							"        \"orderId\",\r",
+							"        \"clientId\",\r",
+							"        \"userId\",\r",
+							"        \"instrument\",\r",
+							"        \"side\",\r",
+							"        \"orderType\",\r",
+							"        \"price\",\r",
+							"        \"executedPrice\",\r",
+							"        \"executedTimestamp\",\r",
+							"        \"quantity\",\r",
+							"        \"quantityFilled\",\r",
+							"        \"orderStatus\",\r",
+							"        \"cancellationReason\",\r",
+							"        \"slippage\",\r",
+							"        \"timestamp\"\r",
+							"    ];\r",
+							"\r",
+							"    response.forEach((item, index) => {\r",
+							"        pm.test(`Order ${index + 1} has all required keys`, function () {\r",
+							"            requiredKeys.forEach(key => {\r",
+							"                pm.expect(item, `Missing key: ${key}`).to.have.property(key);\r",
+							"            });\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{host}}/api/v1/orders/{{start_date}}/{{end_date}}/0/25",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"orders",
+						"{{start_date}}",
+						"{{end_date}}",
+						"0",
+						"25"
+					]
+				},
+				"description": "## **Get Orders Paginated**\n\nRetrieves a paginated list of orders made within a specific date range.\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint:**`{{host}}/api/v1/orders/{startDate}/{endDate}/{page}/{pageSize}`\n    \n\n| Parameter | Type | Description |\n| --- | --- | --- |\n| startDate | string | ISO date-time (`YYYY-MM-DDTHH:mm:ssZ`) |\n| endDate | string | ISO date-time |\n| page | int | Page number (zero-indexed) |\n| pageSize | int | Number of records per page (5–50) |\n\n### Example Request\n\n`GET /api/v1/orders/2025-06-28T00:00:00Z/2025-07-01T23:59:59Z/0/25`\n\n### Example Response\n\n_(Same as \"Get Orders by ClientID\")_"
+			},
+			"response": [
+				{
+					"name": "Get Orders Paginated",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/api/v1/orders/{{start_date}}/{{end_date}}/0/25",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"orders",
+								"{{start_date}}",
+								"{{end_date}}",
+								"0",
+								"25"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"orderId\": \"d69f4c12-0a0a-4b5f-8a5f-6c3e0e7e2c4e\",\n        \"clientId\": \"b3e8f4a3-6c78-44b8-8b0b-789c90fd5b20\",\n        \"userId\": \"e6c3c12f-df2d-4a2f-bf4d-b7ca7a8f8a1a\",\n        \"instrument\": \"BNBEUR\",\n        \"side\": \"buy\",\n        \"orderType\": 0,\n        \"price\": 541.35,\n        \"executedPrice\": 541.35,\n        \"executedTimestamp\": \"2024-03-17T16:09:15.000Z\",\n        \"quantity\": 0.05,\n        \"quantityFilled\": 0.05,\n        \"orderStatus\": 2,\n        \"cancellationReason\": \"\",\n        \"slippage\": 0.1,\n        \"timestamp\": \"2024-03-17T16:09:14.000Z\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Get User's balances",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an object with required top-level keys\", function () {\r",
+							"    pm.expect(response).to.be.an(\"object\");\r",
+							"    pm.expect(response).to.have.property(\"userId\");\r",
+							"    pm.expect(response).to.have.property(\"sequence\");\r",
+							"    pm.expect(response).to.have.property(\"assets\");\r",
+							"    pm.expect(response).to.have.property(\"deleted\");\r",
+							"});\r",
+							"\r",
+							"pm.test(\"Assets is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response.assets)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"if (response.assets.length > 0) {\r",
+							"    response.assets.forEach((asset, index) => {\r",
+							"        pm.test(`Asset ${index + 1} has required keys`, function () {\r",
+							"            pm.expect(asset).to.have.property(\"name\");\r",
+							"            pm.expect(asset).to.have.property(\"available\");\r",
+							"            pm.expect(asset).to.have.property(\"allocated\");\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Assets array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.assets.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"url": {
+					"raw": "{{host}}/api/v1/user/balances",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"user",
+						"balances"
+					]
+				},
+				"description": "## **Get User’s Balances**\n\nReturns current balances for all assets associated with the user.\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint**: `{{host}}/api/v1/user/balances`\n    \n\n### Request Body\n\n_None required._\n\n### Example Response\n\n``` json\n{\n  \"userId\": \"1a66db8f-e...\",\n  \"sequence\": 6618,\n  \"assets\": [\n    {\n      \"name\": \"BTC\",\n      \"available\": 0.014335,\n      \"allocated\": 0\n    },\n    {\n      \"name\": \"USDT\",\n      \"available\": 10000,\n      \"allocated\": 2500\n    }\n  ],\n  \"deleted\": false\n}\n\n ```\n\n### Notes\n\n- `available` = freely usable funds\n    \n- `allocated` = locked in trades or pending actions"
+			},
+			"response": [
+				{
+					"name": "Get User's balances",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{host}}/api/v1/user/balances",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"user",
+								"balances"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "{\n    \"userId\": \"c7f5bc15-cc00-4c5d-a92b-3e2e0f3f88c8\",\n    \"sequence\": 6618,\n    \"assets\": [\n        {\n            \"name\": \"MATIC\",\n            \"available\": 0,\n            \"allocated\": 0\n        },\n        {\n            \"name\": \"BTC\",\n            \"available\": 0.014335,\n            \"allocated\": 0\n        }\n    ],\n    \"deleted\": false\n}"
+				}
+			]
+		},
+		{
+			"name": "Get Trades by ClientId",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"if (response.length > 0) {\r",
+							"    const requiredKeys = [\r",
+							"        \"id\",\r",
+							"        \"userId\",\r",
+							"        \"clientId\",\r",
+							"        \"instrument\",\r",
+							"        \"side\",\r",
+							"        \"price\",\r",
+							"        \"quantityFilled\",\r",
+							"        \"timestamp\",\r",
+							"        \"email\"\r",
+							"    ];\r",
+							"\r",
+							"    response.forEach((item, index) => {\r",
+							"        pm.test(`Item ${index + 1} has all required keys`, function () {\r",
+							"            requiredKeys.forEach(key => {\r",
+							"                pm.expect(item, `Missing key: ${key}`).to.have.property(key);\r",
+							"            });\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{host}}/api/v1/user/trades/{{$guid}}",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"user",
+						"trades",
+						"{{$guid}}"
+					]
+				},
+				"description": "## **Get Trades by Client ID**\n\nFetches executed trades by a specific client.\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint**:`{{host}}/api/v1/user/trades/{clientId}`\n    \n\n### Example Response\n\n``` json\n[\n  {\n    \"id\": \"trade001\",\n    \"userId\": \"user001\",\n    \"clientId\": \"68925acb-4f03-48ab-98a9-16b845f21017\",\n    \"instrument\": \"BTCUSDT\",\n    \"side\": \"buy\",\n    \"price\": 26844.07,\n    \"quantityFilled\": 1,\n    \"timestamp\": \"2025-07-01T12:10:00.000Z\",\n    \"email\": \"user@email.com\"\n  }\n]\n\n ```"
+			},
+			"response": [
+				{
+					"name": "Get Trades by ClientId",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/api/v1/user/trades/{{$guid}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"user",
+								"trades",
+								"{{$guid}}"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"id\": \"3d6f77ec-2d1e-45ef-bb96-abc123456def\",\n        \"userId\": \"3d6f77ec-2d1e-45ef-bb96-abc987654321\",\n        \"clientId\": \"3d6f77ec-2d1e-45ef-bb96-abc987654321\",\n        \"instrument\": \"ETH/EUR\",\n        \"side\": \"sell\",\n        \"price\": 1534,\n        \"quantityFilled\": 0.05,\n        \"timestamp\": \"2023-07-23T32:35.000Z\",\n        \"email\": \"abc@test.com\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Get Trades Paginated",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const now = new Date();\r",
+							"const minus3Days = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);\r",
+							"\r",
+							"const isoStartDate = minus3Days.toISOString(); \r",
+							"const isoEndDate = now.toISOString(); \r",
+							"\r",
+							"const encodedStartDate = encodeURIComponent(isoStartDate);\r",
+							"const encodedEndDate = encodeURIComponent(isoEndDate);\r",
+							"\r",
+							"pm.variables.set(\"start_date\", encodedStartDate);\r",
+							"pm.variables.set(\"end_date\", encodedEndDate);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"if (response.length > 0) {\r",
+							"    const requiredKeys = [\r",
+							"        \"id\",\r",
+							"        \"userId\",\r",
+							"        \"instrument\",\r",
+							"        \"side\",\r",
+							"        \"price\",\r",
+							"        \"quantityFilled\",\r",
+							"        \"timestamp\",\r",
+							"        \"email\"\r",
+							"    ];\r",
+							"\r",
+							"    response.forEach((item, index) => {\r",
+							"        pm.test(`Item ${index + 1} has all required keys`, function () {\r",
+							"            requiredKeys.forEach(key => {\r",
+							"                pm.expect(item, `Missing key: ${key}`).to.have.property(key);\r",
+							"            });\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{host}}/api/v1/user/trades/{{start_date}}/{{end_date}}/0/25",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"user",
+						"trades",
+						"{{start_date}}",
+						"{{end_date}}",
+						"0",
+						"25"
+					]
+				},
+				"description": "**Get Trades Paginated**\n\nRetrieves a paginated list of trades within a specific date range (max 7 days).\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint**:`{{host}}/api/v1/user/trades/{startDate}/{endDate}/{page}/{pageSize}`\n    \n\n| Parameter | Type | Description |\n| --- | --- | --- |\n| startDate | string | ISO date-time (`YYYY-MM-DDTHH:mm:ssZ`) |\n| endDate | string | ISO date-time |\n| page | int | Page number (zero-indexed) |\n| pageSize | int | Number of records per page (5–50) |\n\n### Example Response\n\n_(Same as Get Trades by ClientId)_"
+			},
+			"response": [
+				{
+					"name": "Get Trades Paginated",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/api/v1/user/trades/{{start_date}}/{{end_date}}/0/25",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"user",
+								"trades",
+								"{{start_date}}",
+								"{{end_date}}",
+								"0",
+								"25"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"id\": \"3d6f77ec-2d1e-45ef-bb96-abc123456def\",\n        \"userId\": \"3d6f77ec-2d1e-45ef-bb96-abc987654321\",\n        \"clientId\": \"3d6f77ec-2d1e-45ef-bb96-abc987654321\",\n        \"instrument\": \"ETH/EUR\",\n        \"side\": \"sell\",\n        \"price\": 1534,\n        \"quantityFilled\": 0.05,\n        \"timestamp\": \"2023-07-23T32:35.000Z\",\n        \"email\": \"abc@test.com\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Get Historical Trades Paginated",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const now = new Date();\r",
+							"const minus30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);\r",
+							"\r",
+							"const isoStartDate = minus30Days.toISOString(); \r",
+							"const isoEndDate = now.toISOString(); \r",
+							"\r",
+							"const encodedStartDate = encodeURIComponent(isoStartDate);\r",
+							"const encodedEndDate = encodeURIComponent(isoEndDate);\r",
+							"\r",
+							"pm.variables.set(\"start_date\", encodedStartDate);\r",
+							"pm.variables.set(\"end_date\", encodedEndDate);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"if (response.length > 0) {\r",
+							"    const requiredKeys = [\r",
+							"        \"id\",\r",
+							"        \"userId\",\r",
+							"        \"instrument\",\r",
+							"        \"side\",\r",
+							"        \"price\",\r",
+							"        \"quantityFilled\",\r",
+							"        \"timestamp\",\r",
+							"        \"email\"\r",
+							"    ];\r",
+							"\r",
+							"    response.forEach((item, index) => {\r",
+							"        pm.test(`Item ${index + 1} has all required keys`, function () {\r",
+							"            requiredKeys.forEach(key => {\r",
+							"                pm.expect(item, `Missing key: ${key}`).to.have.property(key);\r",
+							"            });\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{host}}/api/v1/user/trades/{{start_date}}/{{end_date}}/0/25/historical",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"user",
+						"trades",
+						"{{start_date}}",
+						"{{end_date}}",
+						"0",
+						"25",
+						"historical"
+					]
+				},
+				"description": "## **Get Historical Trades Paginated**\n\nSame as `Get Trades Paginated`, but allows fetching from the past 30 days.\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint:**`{{host}}/api/v1/user/trades/{startDate}/{endDate}/{page}/{pageSize}/historical`"
+			},
+			"response": [
+				{
+					"name": "Get Historical Trades Paginated",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/api/v1/user/trades/{{start_date}}/{{end_date}}/0/25/historical",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"user",
+								"trades",
+								"{{start_date}}",
+								"{{end_date}}",
+								"0",
+								"25",
+								"historical"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"id\": \"3d6f77ec-2d1e-45ef-bb96-abc123456def\",\n        \"userId\": \"3d6f77ec-2d1e-45ef-bb96-abc987654321\",\n        \"clientId\": \"3d6f77ec-2d1e-45ef-bb96-abc987654321\",\n        \"instrument\": \"ETH/EUR\",\n        \"side\": \"sell\",\n        \"price\": 1534,\n        \"quantityFilled\": 0.05,\n        \"timestamp\": \"2023-07-23T32:35.000Z\",\n        \"email\": \"abc@test.com\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Get Transactions Paginated",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const now = new Date();\r",
+							"const minus3Days = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);\r",
+							"\r",
+							"const isoStartDate = minus3Days.toISOString(); \r",
+							"const isoEndDate = now.toISOString(); \r",
+							"\r",
+							"const encodedStartDate = encodeURIComponent(isoStartDate);\r",
+							"const encodedEndDate = encodeURIComponent(isoEndDate);\r",
+							"\r",
+							"pm.variables.set(\"start_date\", encodedStartDate);\r",
+							"pm.variables.set(\"end_date\", encodedEndDate);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"if (response.length > 0) {\r",
+							"    const requiredKeys = [\r",
+							"        \"id\",\r",
+							"        \"userId\",\r",
+							"        \"sequence\",\r",
+							"        \"type\",\r",
+							"        \"asset\",\r",
+							"        \"amount\",\r",
+							"        \"timestamp\"\r",
+							"    ];\r",
+							"\r",
+							"    response.forEach((item, index) => {\r",
+							"        pm.test(`Item ${index + 1} has all required keys`, function () {\r",
+							"            requiredKeys.forEach(key => {\r",
+							"                pm.expect(item, `Missing key: ${key}`).to.have.property(key);\r",
+							"            });\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{host}}/api/v1/user/transactions/{{start_date}}/{{end_date}}/0/25",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"user",
+						"transactions",
+						"{{start_date}}",
+						"{{end_date}}",
+						"0",
+						"25"
+					]
+				},
+				"description": "## **Get Transactions Paginated**\n\nReturns user's historic movements, includint trades, withdrawals and deposits (7-day window).\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint:**`{{host}}/api/v1/user/transactions/{startDate}/{endDate}/{page}/{pageSize}`\n    \n\n| Parameter | Type | Description |\n| --- | --- | --- |\n| startDate | string | ISO date-time (`YYYY-MM-DDTHH:mm:ssZ`) |\n| endDate | string | ISO date-time |\n| page | int | Page number (zero-indexed) |\n| pageSize | int | Number of records per page (5–50) |\n\n### Example Request\n\n`GET api/v1/user/transactions/2025-06-28T00:00:00Z/2025-07-01T23:59:59Z/0/25`\n\n### Example Response\n\n``` json\n[\n  {\n    \"id\": \"tx001\",\n    \"userId\": \"user001\",\n    \"sequence\": 90123,\n    \"type\": 4,\n    \"asset\": \"USDT\",\n    \"amount\": 1000.0,\n    \"timestamp\": \"2025-07-01T12:12:00.000Z\"\n  }\n]\n\n ```\n\n### Notes\n\n- `type` values:\n    \n    - `0` - deposit\n        \n    - `1` - withdraw\n        \n    - `2` - trade fee\n        \n    - `3` - custody fee\n        \n    - `4` - trade\n        \n    - `5` - trade lock\n        \n    - `6` - trade unlock\n        \n    - `7` - withdrawal fee\n        \n    - `8` - withdrawal refund\n        \n    - `9` - withdrawal fee refundEndFragment"
+			},
+			"response": [
+				{
+					"name": "Get Transactions Paginated",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/api/v1/user/transactions/{{start_date}}/{{end_date}}/0/25",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"user",
+								"transactions",
+								"{{start_date}}",
+								"{{end_date}}",
+								"0",
+								"25"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"userId\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"sequence\": 123,\n        \"type\": 4,\n        \"asset\": \"USDC\",\n        \"amount\": 1050.32,\n        \"timestamp\": \"2023-07-23T12:06:04.175Z\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Get Historical Transactions Paginated",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const now = new Date();\r",
+							"const minus30Days = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);\r",
+							"\r",
+							"const isoStartDate = minus30Days.toISOString(); \r",
+							"const isoEndDate = now.toISOString(); \r",
+							"\r",
+							"const encodedStartDate = encodeURIComponent(isoStartDate);\r",
+							"const encodedEndDate = encodeURIComponent(isoEndDate);\r",
+							"\r",
+							"pm.variables.set(\"start_date\", encodedStartDate);\r",
+							"pm.variables.set(\"end_date\", encodedEndDate);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"if (response.length > 0) {\r",
+							"    const requiredKeys = [\r",
+							"        \"id\",\r",
+							"        \"userId\",\r",
+							"        \"sequence\",\r",
+							"        \"type\",\r",
+							"        \"asset\",\r",
+							"        \"amount\",\r",
+							"        \"timestamp\"\r",
+							"    ];\r",
+							"\r",
+							"    response.forEach((item, index) => {\r",
+							"        pm.test(`Item ${index + 1} has all required keys`, function () {\r",
+							"            requiredKeys.forEach(key => {\r",
+							"                pm.expect(item, `Missing key: ${key}`).to.have.property(key);\r",
+							"            });\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{host}}/api/v1/user/transactions/{{start_date}}/{{end_date}}/0/25/historical",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"user",
+						"transactions",
+						"{{start_date}}",
+						"{{end_date}}",
+						"0",
+						"25",
+						"historical"
+					]
+				},
+				"description": "## **Get Historical Transactions Paginated**\n\nSame `Get Transactions Paginated`, but allows fetching from the past 30 days.\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint:**`{{host}}/api/v1/user/transactions/{startDate}/{endDate}/{page}/{pageSize}/historical`"
+			},
+			"response": [
+				{
+					"name": "Get Historical Transactions Paginated",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/api/v1/user/transactions/{{start_date}}/{{end_date}}/0/25/historical",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"user",
+								"transactions",
+								"{{start_date}}",
+								"{{end_date}}",
+								"0",
+								"25",
+								"historical"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"id\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"userId\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"sequence\": 123,\n        \"type\": 4,\n        \"asset\": \"USDC\",\n        \"amount\": 1050.32,\n        \"timestamp\": \"2023-07-23T12:06:04.175Z\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Withdraw",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an object\", function () {\r",
+							"    pm.expect(response).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const requiredKeys = [\r",
+							"    \"id\",\r",
+							"    \"clientId\",\r",
+							"    \"userId\",\r",
+							"    \"name\",\r",
+							"    \"surname\",\r",
+							"    \"company\",\r",
+							"    \"description\",\r",
+							"    \"destination\",\r",
+							"    \"destinationParams\",\r",
+							"    \"network\",\r",
+							"    \"amount\",\r",
+							"    \"asset\",\r",
+							"    \"fee\",\r",
+							"    \"status\",\r",
+							"    \"refId\",\r",
+							"    \"isInstant\",\r",
+							"    \"timestamp\"\r",
+							"];\r",
+							"\r",
+							"pm.test(\"All required keys are present\", function () {\r",
+							"    requiredKeys.forEach(key => {\r",
+							"        pm.expect(response, `Missing key: ${key}`).to.have.property(key);\r",
+							"    });\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"asset\": \"ETH\",\r\n    \"amount\": 1,\r\n    \"address\": \"0x000000000000000000000000000000000000dEaD\",\r\n    \"network\": \"Ethereum\"\r\n}"
+				},
+				"url": {
+					"raw": "{{host}}/api/v1/withdrawals",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"withdrawals"
+					]
+				},
+				"description": "## **Withdraw**\n\nInitiates a withdrawal to a specified address on a supported network.\n\n### Request\n\n- **Method**: `POST`\n    \n- **Endpoint**: `{{host}}/api/v1/withdrawals`\n    \n\n| Field | Type | Description |\n| --- | --- | --- |\n| asset | string | The asset to withdraw (e.g., `\"ETH\"`) |\n| amount | number | The amount to withdraw |\n| address | string | Destination address (must be whitelisted) |\n| network | string | Blockchain network (e.g., `\"Ethereum\"`) |\n\n### Example Request Body\n\n``` json\n{\n  \"asset\": \"ETH\",\n  \"amount\": 1,\n  \"address\": \"0x000000000000000000000000000000000000dEaD\",\n  \"network\": \"Ethereum\"\n}\n\n ```\n\n### Example Response\n\n``` json\n{\n  \"id\": \"w123\",\n  \"clientId\": \"68925acb-4f03-48ab-98a9-16b845f21017\",\n  \"userId\": \"user001\",\n  \"name\": \"Marco\",\n  \"surname\": \"Rossi\",\n  \"company\": \"\",\n  \"description\": \"Payout ETH\",\n  \"destination\": \"0x000000000000000000000000000000000000dEaD\",\n  \"destinationParams\": {},\n  \"network\": \"Ethereum\",\n  \"amount\": 1,\n  \"asset\": \"ETH\",\n  \"fee\": 5,\n  \"status\": \"CONFIRMING\",\n  \"refId\": \"ab1234\",\n  \"isInstant\": false,\n  \"timestamp\": \"2025-07-01T12:15:00.000Z\"\n}\n\n ```\n\n### Notes\n\n- Only addresses previously whitelisted can be used."
+			},
+			"response": [
+				{
+					"name": "Withdraw",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"asset\": \"ETH\",\r\n    \"amount\": 1,\r\n    \"address\": \"0x000000000000000000000000000000000000dEaD\",\r\n    \"network\": \"Ethereum\"\r\n}"
+						},
+						"url": {
+							"raw": "{{host}}/api/v1/withdrawals",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"withdrawals"
+							]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"id\": \"68925acb-4f03-48ab-98a9-16b845f21017\",\n        \"clientId\": \"68925acb-4f03-48ab-98a9-16b845f21017\",\n        \"userId\": \"yyyy\",\n        \"name\": \"John\",\n        \"surname\": \"Doe\",\n        \"company\": \"\",\n        \"description\": \"xyz\",\n        \"destination\": \"xyzwallet\",\n        \"destinationParams\": {},\n        \"network\": \"ethereum\",\n        \"amount\": 1,\n        \"asset\": \"USDT\",\n        \"fee\": 5,\n        \"status\": \"CONFIRMING\",\n        \"refId\": \"ab1234\",\n        \"isInstant\": false,\n        \"timestamp\": \"2024-03-27T16:03:12.456Z\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Withdraw Funds with Address Params",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an object\", function () {\r",
+							"    pm.expect(response).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const requiredKeys = [\r",
+							"    \"id\",\r",
+							"    \"clientId\",\r",
+							"    \"userId\",\r",
+							"    \"name\",\r",
+							"    \"surname\",\r",
+							"    \"company\",\r",
+							"    \"description\",\r",
+							"    \"destination\",\r",
+							"    \"destinationParams\",\r",
+							"    \"network\",\r",
+							"    \"amount\",\r",
+							"    \"asset\",\r",
+							"    \"fee\",\r",
+							"    \"status\",\r",
+							"    \"refId\",\r",
+							"    \"isInstant\",\r",
+							"    \"timestamp\"\r",
+							"];\r",
+							"\r",
+							"pm.test(\"All required keys are present\", function () {\r",
+							"    requiredKeys.forEach(key => {\r",
+							"        pm.expect(response, `Missing key: ${key}`).to.have.property(key);\r",
+							"    });\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"asset\": \"ETH\",\r\n    \"amount\": 1,\r\n    \"address\": \"0x000000000000000000000000000000000000dEaD\",\r\n    \"addressParams\": {},\r\n    \"network\": \"Ethereum\",\r\n    \"isInstant\": false\r\n}"
+				},
+				"url": {
+					"raw": "{{host}}/api/v1/withdrawals/address",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"withdrawals",
+						"address"
+					]
+				},
+				"description": "## **Withdraw With Address Params**\n\nPerforms a withdrawal with custom address parameters.\n\n### Request\n\n- **Method**: `POST`\n    \n- **Endpoint**: `{{host}}/api/v1/withdrawals/address`\n    \n\n| Field | Type | Description |\n| --- | --- | --- |\n| asset | string | The asset to withdraw (e.g., `\"EUR\"`) |\n| amount | number | Withdrawal amount |\n| address | string | Destination address |\n| addressParams | object | Extra address fields if required |\n| network | string | Target network (e.g., `\"Sepa\"` or `\"Ethereum\"`) |\n| isInstant | boolean | Request an instant payout |\n\n### Example Request Body\n\n``` json\n{\n  \"asset\": \"EUR\",\n  \"amount\": 45,\n  \"address\": \"ITXXXXXXXXXXXX\",\n  \"addressParams\": {},\n  \"network\": \"Sepa\",\n  \"isInstant\": true\n}\n\n ```\n\n### Example Response\n\n_(Same as_ `Withdraw` _endpoint)_\n\n### Notes\n\n- Use this endpoint when additional routing info is required (e.g., fiat/SEPA)."
+			},
+			"response": [
+				{
+					"name": "Withdraw funds with address params",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"asset\": \"ETH\",\r\n    \"amount\": 1,\r\n    \"address\": \"0x000000000000000000000000000000000000dEaD\",\r\n    \"addressParams\": {},\r\n    \"network\": \"Ethereum\",\r\n    \"isInstant\": false\r\n}"
+						},
+						"url": {
+							"raw": "{{host}}/api/v1/withdrawals/address",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"withdrawals",
+								"address"
+							]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"id\": \"68925acb-4f03-48ab-98a9-16b845f21017\",\n        \"clientId\": \"68925acb-4f03-48ab-98a9-16b845f21017\",\n        \"userId\": \"yyyy\",\n        \"name\": \"John\",\n        \"surname\": \"Doe\",\n        \"company\": \"\",\n        \"description\": \"xyz\",\n        \"destination\": \"xyzwallet\",\n        \"destinationParams\": {},\n        \"network\": \"ethereum\",\n        \"amount\": 1,\n        \"asset\": \"USDT\",\n        \"fee\": 5,\n        \"status\": \"CONFIRMING\",\n        \"refId\": \"ab1234\",\n        \"isInstant\": false,\n        \"timestamp\": \"2024-03-27T16:03:12.456Z\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Instant Withdraw",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an object\", function () {\r",
+							"    pm.expect(response).to.be.an(\"object\");\r",
+							"});\r",
+							"\r",
+							"const requiredKeys = [\r",
+							"    \"id\",\r",
+							"    \"clientId\",\r",
+							"    \"userId\",\r",
+							"    \"name\",\r",
+							"    \"surname\",\r",
+							"    \"company\",\r",
+							"    \"description\",\r",
+							"    \"destination\",\r",
+							"    \"destinationParams\",\r",
+							"    \"network\",\r",
+							"    \"amount\",\r",
+							"    \"asset\",\r",
+							"    \"fee\",\r",
+							"    \"status\",\r",
+							"    \"refId\",\r",
+							"    \"isInstant\",\r",
+							"    \"timestamp\"\r",
+							"];\r",
+							"\r",
+							"pm.test(\"All required keys are present\", function () {\r",
+							"    requiredKeys.forEach(key => {\r",
+							"        pm.expect(response, `Missing key: ${key}`).to.have.property(key);\r",
+							"    });\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"asset\": \"ETH\",\r\n    \"amount\": 1,\r\n    \"address\": \"0x000000000000000000000000000000000000dEaD\",\r\n    \"network\": \"Ethereum\"\r\n}"
+				},
+				"url": {
+					"raw": "{{host}}/api/v1/withdrawals/instant",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"withdrawals",
+						"instant"
+					]
+				},
+				"description": "## **Instant Withdraw**\n\nExecutes a crypto or fiat withdrawal instantly.\n\n### Request\n\n- **Method**: `POST`\n    \n- **Endpoint**: `{{host}}/api/v1/withdrawals/instant`\n    \n\n| Field | Type | Description |\n| --- | --- | --- |\n| asset | string | Asset to withdraw |\n| amount | number | Amount to withdraw |\n| address | string | Destination address |\n| network | string | Blockchain/Fiat network |\n\n### Example Request Body\n\n``` json\n{\n  \"asset\": \"USDT\",\n  \"amount\": 1,\n  \"address\": \"0x000000000000000000000000000000000000dEaD\",\n  \"network\": \"Ethereum\"\n}\n\n ```\n\n### Example Response\n\n_(Same structure as_ `Withdraw`_endpoint)_"
+			},
+			"response": [
+				{
+					"name": "Instant Withdraw",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"asset\": \"ETH\",\r\n    \"amount\": 1,\r\n    \"address\": \"0x000000000000000000000000000000000000dEaD\",\r\n    \"network\": \"Ethereum\"\r\n}"
+						},
+						"url": {
+							"raw": "{{host}}/api/v1/withdrawals/instant",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"withdrawals",
+								"instant"
+							]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"id\": \"68925acb-4f03-48ab-98a9-16b845f21017\",\n        \"clientId\": \"68925acb-4f03-48ab-98a9-16b845f21017\",\n        \"userId\": \"yyyy\",\n        \"name\": \"John\",\n        \"surname\": \"Doe\",\n        \"company\": \"\",\n        \"description\": \"xyz\",\n        \"destination\": \"xyzwallet\",\n        \"destinationParams\": {},\n        \"network\": \"ethereum\",\n        \"amount\": 1,\n        \"asset\": \"USDT\",\n        \"fee\": 5,\n        \"status\": \"CONFIRMING\",\n        \"refId\": \"ab1234\",\n        \"isInstant\": false,\n        \"timestamp\": \"2024-03-27T16:03:12.456Z\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Get Withdrawals",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"if (response.length > 0) {\r",
+							"    const requiredKeys = [\r",
+							"        \"id\",\r",
+							"        \"clientId\",\r",
+							"        \"userId\",\r",
+							"        \"name\",\r",
+							"        \"surname\",\r",
+							"        \"company\",\r",
+							"        \"description\",\r",
+							"        \"destination\",\r",
+							"        \"destinationParams\",\r",
+							"        \"network\",\r",
+							"        \"amount\",\r",
+							"        \"asset\",\r",
+							"        \"fee\",\r",
+							"        \"status\",\r",
+							"        \"refId\",\r",
+							"        \"isInstant\",\r",
+							"        \"timestamp\"\r",
+							"    ];\r",
+							"\r",
+							"    response.forEach((item, index) => {\r",
+							"        pm.test(`Item ${index + 1} has all required keys`, function () {\r",
+							"            requiredKeys.forEach(key => {\r",
+							"                pm.expect(item, `Missing key: ${key}`).to.have.property(key);\r",
+							"            });\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{host}}/api/v1/withdrawals",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"withdrawals"
+					]
+				},
+				"description": "## **Get Withdrawals**\n\nFetches the withdrawal history.\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint**: `{{host}}/api/v1/withdrawals`\n    \n\n### Example Response\n\n``` json\n[\n  {\n    \"id\": \"w123\",\n    \"clientId\": \"client001\",\n    \"userId\": \"user001\",\n    \"name\": \"John\",\n    \"surname\": \"Doe\",\n    \"company\": \"\",\n    \"description\": \"Test\",\n    \"destination\": \"0x000000000000000000000000000000000000dEaD\",\n    \"destinationParams\": {},\n    \"network\": \"Ethereum\",\n    \"amount\": 1,\n    \"asset\": \"ETH\",\n    \"fee\": 5,\n    \"status\": \"CONFIRMING\",\n    \"refId\": \"abc-001\",\n    \"isInstant\": false,\n    \"timestamp\": \"2025-07-01T12:17:00.000Z\"\n  }\n]\n\n ```"
+			},
+			"response": [
+				{
+					"name": "Get Withdrawals",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/api/v1/withdrawals",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"withdrawals"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"id\": \"68925acb-4f03-48ab-98a9-16b845f21017\",\n        \"clientId\": \"68925acb-4f03-48ab-98a9-16b845f21017\",\n        \"userId\": \"yyyy\",\n        \"name\": \"John\",\n        \"surname\": \"Doe\",\n        \"company\": \"\",\n        \"description\": \"xyz\",\n        \"destination\": \"xyzwallet\",\n        \"destinationParams\": {},\n        \"network\": \"ethereum\",\n        \"amount\": 1,\n        \"asset\": \"USDT\",\n        \"fee\": 5,\n        \"status\": \"CONFIRMING\",\n        \"refId\": \"ab1234\",\n        \"isInstant\": false,\n        \"timestamp\": \"2024-03-27T16:03:12.456Z\"\n    }\n]"
+				}
+			]
+		},
+		{
+			"name": "Get Withdrawals Paginated",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const now = new Date();\r",
+							"const minus3Days = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);\r",
+							"\r",
+							"const isoStartDate = minus3Days.toISOString(); \r",
+							"const isoEndDate = now.toISOString(); \r",
+							"\r",
+							"const encodedStartDate = encodeURIComponent(isoStartDate);\r",
+							"const encodedEndDate = encodeURIComponent(isoEndDate);\r",
+							"\r",
+							"pm.variables.set(\"start_date\", encodedStartDate);\r",
+							"pm.variables.set(\"end_date\", encodedEndDate);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"pm.test(\"Response is an array\", function () {\r",
+							"    pm.expect(Array.isArray(response)).to.be.true;\r",
+							"});\r",
+							"\r",
+							"if (response.length > 0) {\r",
+							"    const requiredKeys = [\r",
+							"        \"id\",\r",
+							"        \"clientId\",\r",
+							"        \"userId\",\r",
+							"        \"name\",\r",
+							"        \"surname\",\r",
+							"        \"company\",\r",
+							"        \"description\",\r",
+							"        \"destination\",\r",
+							"        \"destinationParams\",\r",
+							"        \"network\",\r",
+							"        \"amount\",\r",
+							"        \"asset\",\r",
+							"        \"fee\",\r",
+							"        \"status\",\r",
+							"        \"refId\",\r",
+							"        \"isInstant\",\r",
+							"        \"timestamp\"\r",
+							"    ];\r",
+							"\r",
+							"    response.forEach((item, index) => {\r",
+							"        pm.test(`Item ${index + 1} has all required keys`, function () {\r",
+							"            requiredKeys.forEach(key => {\r",
+							"                pm.expect(item, `Missing key: ${key}`).to.have.property(key);\r",
+							"            });\r",
+							"        });\r",
+							"    });\r",
+							"} else {\r",
+							"    pm.test(\"Array is empty (acceptable)\", function () {\r",
+							"        pm.expect(response.length).to.eql(0);\r",
+							"    });\r",
+							"}\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{host}}/api/v1/withdrawals/{{start_date}}/{{end_date}}/0/25",
+					"host": [
+						"{{host}}"
+					],
+					"path": [
+						"api",
+						"v1",
+						"withdrawals",
+						"{{start_date}}",
+						"{{end_date}}",
+						"0",
+						"25"
+					]
+				},
+				"description": "## **Get Withdrawals Paginated**\n\nReturns a paginated set of withdrawals for a given time window.\n\n### Request\n\n- **Method**: `GET`\n    \n- **Endpoint:**`{{host}}/api/v1/withdrawals/{startDate}/{endDate}/{page}/{pageSize}`\n    \n\n| Parameter | Type | Description |\n| --- | --- | --- |\n| startDate | string | ISO date (`YYYY-MM-DDTHH:mm:ssZ`) |\n| endDate | string | ISO date |\n| page | int | Page number (starts at 0) |\n| pageSize | int | Max items per page (5–50) |\n\n### Example Request\n\n`GET /api/v1/withdrawals/2025-06-28T00:00:00Z/2025-07-01T23:59:59Z/0/25`\n\n### Example Response\n\n_(Same format as_ `Get Withdrawals`_)_"
+			},
+			"response": [
+				{
+					"name": "Get Withdrawals Paginated",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/api/v1/withdrawals/{{start_date}}/{{end_date}}/0/25",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"withdrawals",
+								"{{start_date}}",
+								"{{end_date}}",
+								"0",
+								"25"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json",
+							"name": "Content-Type",
+							"description": "",
+							"type": "text"
+						}
+					],
+					"cookie": [
+						{
+							"expires": "Invalid Date"
+						}
+					],
+					"body": "[\n    {\n        \"id\": \"68925acb-4f03-48ab-98a9-16b845f21017\",\n        \"clientId\": \"68925acb-4f03-48ab-98a9-16b845f21017\",\n        \"userId\": \"yyyy\",\n        \"name\": \"John\",\n        \"surname\": \"Doe\",\n        \"company\": \"\",\n        \"description\": \"xyz\",\n        \"destination\": \"xyzwallet\",\n        \"destinationParams\": {},\n        \"network\": \"ethereum\",\n        \"amount\": 1,\n        \"asset\": \"USDT\",\n        \"fee\": 5,\n        \"status\": \"CONFIRMING\",\n        \"refId\": \"ab1234\",\n        \"isInstant\": false,\n        \"timestamp\": \"2024-03-27T16:03:12.456Z\"\n    }\n]"
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "host",
+			"value": "https://publicapi.dev.hercle.financial",
+			"type": "string"
+		},
+		{
+			"key": "webClientId",
+			"value": "{{clienteId}}",
+			"type": "default"
+		},
+		{
+			"key": "pair",
+			"value": "BTCUSDT",
+			"type": "string"
+		},
+		{
+			"key": "side",
+			"value": "buy",
+			"type": "string"
+		},
+		{
+			"key": "amount",
+			"value": ""
+		},
+		{
+			"key": "asset",
+			"value": ""
+		},
+		{
+			"key": "addressId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "size",
+			"value": ""
+		},
+		{
+			"key": "priceId",
+			"value": ""
+		},
+		{
+			"key": "rfqId",
+			"value": ""
+		}
+	]
+}
