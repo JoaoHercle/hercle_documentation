@@ -1,6 +1,6 @@
 # Hercle REST API Collection
-This Postman collection provides complete access to the Hercle REST API, including:
- - OTC price quotes and order execution
+This Postman collection provides detailed implementation of the Hercle REST API, including:
+- OTC price quotes and order execution
 - Deposits and withdrawals (crypto and fiat)
 - Request-for-Quote (RFQ) flow
 - Whitelisting addresses
